@@ -120,3 +120,20 @@
 	$ git push origin master			push提交入库
 ~~~
 
+
+
+## 3.GitHub的克隆
+
+- **真实项目开发流程**
+
+  - 1. 组长先创建中央仓库(增加协作者)
+
+  -    2.小组成员基于 $ git clone 把远程仓库以及默认的内容克隆岛本地一份
+  -    3.每个组员写完自己程序后，基于”git add/git commit“把自己修改的内容存放到历史区，然后通过”git pull/git push“把本地信息和远程仓库信息保持同步即可
+
+~~~markdown
+	$ git clone	远程仓库地址		
+~~~
+
+
+

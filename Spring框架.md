@@ -897,6 +897,8 @@ FactoryBean{
 
 # 第十章、对象的生命周期
 
+![image-20200614201006006](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200614201006006.png)
+
 ## 1.什么是对象的生命周期
 
 - 指的是一个对象创建，存活，消亡的一个完整过程
@@ -938,7 +940,114 @@ FactoryBean{
   	2. 初始化方法调用：Spring工厂进行调用
   ~~~
 
+  - ImitializingBean接口
+
+    ~~~java
+    //程序员根据需求，实现的方法，完成初始化操作
+    public void afterProperitesSet(){
+        
+    }
+    ~~~
+
+  - 对象中提供一个普通的方法
+
+    ~~~java
+    public void myInit(){
+        
+    }
+    <bean id="product" class="xxx.Product" init-method="myInit"/>
+    ~~~
+
+  - 细节分析
+
+    1. 如果一个对象即实现lnitializingBean同时又提供的普通的初始化方法 顺序
+
+       ~~~markdown
+       1. 普通初始化方法
+       2. InitiaIizingBean
+       ~~~
+
+    2. 注入一定发生在初始化操作的前面
+
+       3.什么叫初始化操作
+
+    ~~~markdown
+    1. 资源的初始化:数据库 IO 网络 .....
+    ~~~
+
+
 - 销毁阶段
 
+  ~~~markdown
+  Spring销毁对象前,会调用对象的销毁方法，完成销毁操作
+  
+  	1. Spring什么时候销毁所创建的对象?
+  		ctx.close();
+  	2. 销毁方法:程序员根据自己的需求 定义销毁方法 完成销毁操作
+      	调用:Spring工厂完成调用
+  ~~~
+
+  - DisposableBean
+
+    ~~~java
+    public void destroy() throws Exception{
+        
+    }
+    ~~~
+
+  - 定义一个普通的销毁方法
+
+    ~~~java
+    public void myDestroy() throws Exception{
+        
+    }
+    <bean id="" class="" init-method="" destroy-method="myDestroy"/>
+    ~~~
+
+  - 细节分析
+
+    1. 销毁方法的操作只适用于 scope="singleton"
+    2. 什么叫做销毁操作
+       - 主要是指就是资源的释放操作 io.close() connection.close();
 
 
+
+# 第十一章、配置文件参数化
+
+~~~markdown
+把Spring配置文件中需要经常修改的字符串信息，转移到一个更小的配置文件中
+
+1. Spring的配置文件中存在需要经常修改的字符串？
+	存在 以数据库连接相关的参数 代表
+2. 经常变化字符串，在Spring的配置文件中，直接修改
+	不利于项目的维护(修改)
+3. 转移到一个小的配置文件(.properties)
+	利于维护(修改)
+
+配置文件参数化: 利于Spring配置文件的维护(修改)
+~~~
+
+## 1.配置文件参数的开发步骤
+
+- 提供一个小的配置文件(.properities)
+
+  ~~~properties
+   名字:随便
+   放置位置:随便
+   
+   jdbc.driverClassName=com.mysql.cj.jdbc.Driver
+   jdbc.url=jdbc:mysql://localhost:3306/test
+   jdbc.username=root
+   jdbc.password=
+  ~~~
+
+-  Spring的配置文件与小配置文件进行整合
+
+      ~~~xml
+applicationContext.xml
+<context:property-placeholder location="classpath：/db.properties"/>
+      ~~~
+
+- 在Spring配置文件中通过${key}获取小配置文件中对应的值
+
+![image-20200614230348314](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200614230348314.png)

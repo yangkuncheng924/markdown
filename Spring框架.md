@@ -733,7 +733,7 @@ JDK类型注入
 ~~~markdown
 	注入：通过Spring的工厂及配置文件，为对象（bean 组件）的成员变量赋值
 	
-	依赖注入：当一个雷需要另一个类时，就意味着依赖，一旦出现依赖，就可以把另一个类作为本类的成员变量，最终通过Spring配置文件进行注入(赋值)。
+	依赖注入：当一个类需要另一个类时，就意味着依赖，一旦出现依赖，就可以把另一个类作为本类的成员变量，最终通过Spring配置文件进行注入(赋值)。
 	好处:解耦合
 ~~~
 
@@ -1051,3 +1051,202 @@ applicationContext.xml
 - 在Spring配置文件中通过${key}获取小配置文件中对应的值
 
 ![image-20200614230348314](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200614230348314.png)
+
+
+
+# 第十二章、自定义类型转换器
+
+## 1.类型转换器
+
+~~~markdown
+作用:Spring通过类型转换器把配置文件中字符串类型的数据，转换成了对象中成员变量对应的数据，进而完成了注入
+~~~
+
+
+
+![image-20200615082950797](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200615082950797.png)
+
+
+
+## 2.自定义类型转换器
+
+~~~markdown
+ 原因:当Spring内部没有提供特定类型转换器时,而程序员在应用的过程中还需要使用,那么就需要程序员自己定义类型转换器
+~~~
+
+- 类 implements Converter接口
+
+  ~~~java
+  public class MyDateConverter implements Converter<String, Date> {
+  
+      /*
+          convert方法作用:  String--->DAte
+                          SimpleDateFormat sdf = new SimpleDateFormat();
+                          sdf.parset(String) ---> Date
+          param: source代表的是配置文件中 日期字符串<value>2020-06-15</value>
+  
+          returun: 当把转换好的Date作为convert方法的返回值后,Spring自动的为birthday属性进行注入(赋值)
+       */
+      @Override
+      public Date convert(String source) {
+          Date date = null;
+          try {
+              SimpleDateFormat sdf = new SimpleDateFormat("yyyy--MM--dd");
+              date = sdf.parse(source);
+          } catch (ParseException e) {
+              e.printStackTrace();
+          }
+          return date;
+      }
+  }
+  ~~~
+
+  
+
+- 在Spring的配置文件中进行配置
+
+  - MyDateConverter对象创建出来
+
+    ~~~xml
+     <bean id="myDateConverter" class="priv.yangkuncheng.converter.MyDateConverter"/>
+    ~~~
+
+  - 类型转换器的注册
+
+    ~~~xml
+    目的:告知Spring框架，我们所创建的MyDateConverter是一个类型转换器
+    <!--    用于注册类型转换器-->
+    <bean id="conversionservice" class="org.springframework.context.support.ConversionServiceFactoryBean">
+        <property name="converters">
+            <set>
+                <ref bean="myDateConverter"/>
+            </set>
+        </property>
+    </bean>
+    ~~~
+
+    
+
+## 3.Spring框架内置日期转换器
+
+~~~markdown
+日期格式: 2020/05/01 (2020-05-01)
+~~~
+
+
+
+# 第十三章、后置处理Bean
+
+~~~markdown
+BeanPostProcessor作用:对Spring工厂所创建的对象,进行在加工。
+
+AOP底层实现:
+
+注意:BeanPostProcessor接口
+			xxxx(){
+			
+			}
+~~~
+
+- 后置处理Bean的运行原理分析
+
+  ![image-20200615135707460](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200615135707460.png)
+
+~~~markdown
+程序员实现BeanPostProcessor规定接口中的方法:
+
+Objict postProcessBeforeInitiallization(Object bean String beanName)
+作用:Spring创建完对象,并进行注入后,可以运行Before方法进行加工
+获得Spring创建好的对象:通过方法的参数
+最终通过返回值交给Spring框架
+
+Object postProcessAfterInitiallization(Object bean String beanName)
+作用:Spring执行完对象的初始化操作后,可以运行After方法进行加工
+获得Spring创建好的对象:通过方法的参数
+最终通过返回值交给Spring框架
+
+实战中:
+很少处理Spring的初始化操作:没有必要区分Before After。只需要实现其中一个After方法即可
+注意:
+	postProcessBeforeInitiallization
+	return bean对象
+~~~
+
+- BeanPostProcessor的开发步骤
+
+  1. 类实现BeanPostProcessor接口
+
+  ~~~java
+  public class MyBeanPostProcessor implements BeanPostProcessor {
+  
+      @Override
+      public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+          return bean;
+      }
+  
+      @Override
+      public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+  		
+          //判断是否是Categroy类型
+          if (bean instanceof Categroy) {
+              Categroy categroy = (Categroy) bean;
+              categroy.setName("xiaoyang");
+          }
+          return bean;
+      }
+  }
+  ~~~
+
+   2. Spring的配置文件中进行配置
+
+      ~~~xml
+      <bean in="myBeanPostProcessor" class="xxx.MyBeanPostProcessor"/>
+      ~~~
+
+3. BeanPostProcessor细节
+
+    ~~~markdown
+BeanPostProcessor会对Spring工厂中所有创建的对象进行加工
+    ~~~
+
+
+
+# ----------------------------
+
+------
+
+
+
+# **Sting之AOP编程**
+
+# 第一章、静态代理设计模式
+
+## 1.为什么需要代理设计模式
+
+### 1.1问题
+
+- 在javaEE分层开发中，那个层次对于我们来讲最重要
+
+  ~~~markdown
+  DAO ---> Service --> Controller
+  
+  JavaEE分层开发中，最为重要的是Service层
+  ~~~
+
+- Service层包含了哪些代码？
+
+  ~~~markdown
+  Service层中 = 核心功能(几十行 上百行)+额外功能(附加功能)
+   1. 核心功能
+   	业务运算
+   	DAO调用
+   2. 额外功能
+   	1. 不属于讹误
+   	2. 可有可无
+   	3. 代码量小少
+   	
+   	事物、日志、性能...
+  
+  ~~~
+
+  

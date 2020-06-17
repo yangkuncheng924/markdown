@@ -1437,7 +1437,7 @@ userService.register();
 
 ## 4.动态代理细节分析
 
-## 1.Spring创建的动态代理在哪里？
+### 1.Spring创建的动态代理在哪里？
 
 ~~~markdown
 1. Spring框架在运行时，通过动态字节码技术，在JVM创建的，运行在JVM内部，等程序结束后，回合JVM一起消失
@@ -1453,9 +1453,252 @@ userService.register();
 
 ![image-20200616184926863](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200616184926863.png)
 
-## 2.动态代理编程简化代理的开发
+### 2.动态代理编程简化代理的开发
 
 ~~~markdwon
 在额外功能不改变的前提下，创建其他目标类(原始类)的代理对象时,只需要指定原始(目标)对象即可。
 ~~~
+
+### 3. 动态代理额外功能的维护性大大增强
+
+
+
+# 第三、Spring动态代理详解
+
+## 1.额外功能的详解
+
+- MethodBeforeAdvice分析
+
+  ~~~java
+  1. MethodBeforeAdvice接口作用:额外功能运行在原始方法执行之前,进行额外功能操作.
+      
+  public class Before1 implements MethodBeforeAdvice{
+      /*
+          作用:需要吧运行在原始方法执行之前运行的额外功能，书写在before方法中
+  
+          Method:额外功能所增加给的那个原始方法
+          login方法
+  
+          register方法
+  
+          showOrder方法
+  
+          Object[]:额外所增加给的那个原始方法的参数.String name,String password
+                                              User
+          Object:  额外功能所增加给的那个原始对象 UserServiceImpl
+                                             OrderServiceImpl
+       */
+      @Override
+      public void before(Method method, Object[] objects, Object o) throws Throwable {
+          System.out.println("---- new method before advice log ----");
+      }
+  }
+  
+  2. before方法的3个参数在实战中，该如何使用？
+      before方法的参数，在实战中，会根据需要进行使用，不一定都会用到，也有可能都不用
+  ~~~
+
+  
+
+- Methodinterceptor(方法拦截器)
+
+  ~~~markdown
+  Methodinterceptor接口:额外功能可以根据需要运行在原始方法执行 前、后、前后。
+  ~~~
+
+  ~~~java
+  public class Arround implements MethodInterceptor {
+      /*
+          invoke方法的作用:额外功能书写在invoke
+                         额外功能 原始方法之前
+                                 原始方法之后
+                                 原始方法执行之前 之后
+         确定:原始方法怎么运行
+  
+         参数:MethodInvocation (Method): 额外功能所增加给的那个原始方法
+          login
+          register
+          invocation.proceed() --> login运行
+                                   register运行
+          返回值:Object:原始方法的返回值
+          Date covert(String name)
+       */
+      @Override
+      public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+          System.out.println("--- 额外功能 log---");
+          Object ret = methodInvocation.proceed();
+          return  ret;
+      }
+  }
+  ~~~
+
+- 额外功能运行在原始方法执行之后
+
+```java
+@Override
+public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+    Object ret = methodInvocation.proceed();
+    System.out.println("--- 额外功能 log---");
+
+    return  ret;
+}
+```
+
+- 额外功能运行在原始方法执行之前和执行之后
+
+~~~java
+什么样的额外功能 运行在原始方法执行之前，之后都要添加？
+    事务
+@Override
+public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+
+    System.out.println("--- 原始方法执行之前 ---");
+
+    Object   ret = methodInvocation.proceed();
+
+    System.out.println("--- 原始方法执行之后---");
+    return  ret;
+}
+~~~
+
+- 额外功能在原始方法抛出异常的时候
+
+~~~java
+@Override
+public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+
+    Object ret = null;
+    try {
+        ret = methodInvocation.proceed();
+    } catch (Throwable throwable) {
+        System.out.println("--- 原始方法抛出异常 执行的额外功能 ---");
+        throwable.printStackTrace();
+    }
+    return  ret;
+}
+}
+~~~
+
+- MethodInterceprot影响方法的返回值
+
+```
+原始方法的返回值,直接作为invoke方法的返回值返回,MethodInterceprot不会影响方法的返回值
+
+MethodInterceprot影响方法的返回值
+invoke方法的返回值，不要直接返回原始方法运行结果即可
+
+@Override
+public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+System.out.println("--- log---");
+Object ret = methodInvocation.proceed();
+return  false;
+}
+```
+
+## 2.切入点详解
+
+~~~xml
+切入点决定额外功能加入位置(方法)
+
+<aop:pointcut id="pc" expression="execution(* *(..))""/>
+exection(* *(..)) ---> 匹配了所有方法 a b c
+
+ 1. execution()     切入点函数                                                  
+ 2. * *(..) 		切入点表达式                                                    
+~~~
+
+### 2.1切入点表达式
+
+1. 方法切入点表达式
+
+![image-20200617140320071](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200617140320071.png)
+
+
+
+~~~markdown
+ * *(..) -->所有方法
+ 
+  * ---> 	修饰符 返回值
+  * ---> 	方法名
+  ()--->	参数表
+  ..--->	对于参数没有要求(参数有没有,参数有几个都行,参数是什么类型都行)
+~~~
+
+- 定义login方法作为切入点
+
+~~~markdown
+ * login(..)
+ 
+ # 定义register作为切入点
+ * register(..)
+~~~
+
+- 定义login方法且login方法有两个字符串类型的参数作为切入点
+
+~~~markdown
+ * login(String,String)
+ 
+ # 注意:非java.long包中的类型，必须要写全限定名
+ * register(priv.yangkuncheng.proxy.User)
+ 
+ #	..可以和具体的参数类型连用
+ * login(String,..) -->login(String),login(String,String),login(String,priv.yangkuncheng.proxy.User)
+ 
+~~~
+
+- 精准方法切入点限定
+
+  ~~~markdown
+   修饰符 返回值 		包.类.方法(参数)
+   	*				priv.yangkuncheng.proxy.UserServiceImpl.login(..)
+   	*				priv.yangkuncheng.proxy.UserServiceImpl.login(String,String)
+  ~~~
+
+### 2.2 类切入点
+
+~~~markdown
+指定特定类作为切入点(额外功能加入的位置),自然这个类中的所有方法,都会加上对应的额外功能
+~~~
+
+- 语法1
+
+  ~~~mark
+   # 类中的所有方法加入了额外功能
+   * priv.yangkuncheng.proxy.UserServiceImpl.*(..)
+  ~~~
+
+- 语法2
+
+  ~~~markdown
+  # 忽略包
+  1. 类只存在一级包 priv.UserServiceImpl
+  * *.UserServiceImpl.*(..)
+  
+  2. 类存在多级包 priv.yangkuncheng.proxy.UserServiceImpl
+  * *..UsserServiceImpl.*(..)
+  ~~~
+
+  
+
+### 2.3 包切入点表达式 实战
+
+~~~mark
+ 指定包作为额外功能加入的位置，自然包中的所有类及其方法都会加入额外的功能
+~~~
+
+- 语法1
+
+  ~~~markdown
+   # 切入点包中所有的类 必须在proxy中，不能再proxy包的子包中
+   * priv.yangkuncheng.proxy.*.*(..)
+  ~~~
+
+- 语法2
+
+  ~~~markdown
+   # 切入点当前包及其子包都生效
+   * priv.yangkuncheng.proxy..*.*(..)
+  ~~~
+
+  
 

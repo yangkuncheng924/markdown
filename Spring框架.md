@@ -1702,3 +1702,278 @@ exection(* *(..)) ---> 匹配了所有方法 a b c
 
   
 
+### 2.4 切入点函数
+
+~~~markdown
+切入点函数:用于执行切入点表达式
+~~~
+
+#### 1. execution
+
+~~~markdown
+ 最为重要的切入点函数,功能最全
+ 执行 方法切入点表达式 类切入点表达式 包切入点表达式
+ 
+ 弊端：execution执行切入点表达式,书写麻烦
+ 	exectuion(* priv.yangkuncheng.proxy..*.*(..))
+ 	
+ 注意：其他的切入点函数 简化是execution书写复杂度，功能上完全一致	
+~~~
+
+#### 2.args
+
+~~~markdown
+ 作用：主要用于函数(方法)参数的匹配
+ 
+ 切入点:方法参数必须得是2个字符串类型的参数
+ 
+ execution(* *(String,String))
+ 
+ args(String,Sting)
+~~~
+
+#### 3.within
+
+~~~mark
+ 作用：主要用于进行类、包切入点表达式的匹配
+ 
+ 切入点：UserServiceImpl这个类
+ 
+ execution(* *..UserServiceImpl.*(..))
+ 
+ within(*..UserServicelmpl)
+ 
+ execution(* priv.yangkuncheng.proxy..*.*(..))
+ 
+ within(priv.yangkuncheng.proxy..*)
+~~~
+
+#### 4.@annotation
+
+~~~xml
+作用:为具有特殊注解的方法加入额外功能
+
+<aop:pointcut id="pc" expression="@annotation(priv.yangkuncheng.Log)"/>
+~~~
+
+#### 5.切入点函数的逻辑运算
+
+~~~markwodn
+ 值得是 整合多个切入点函数一起配合工作,进而完成更为复杂的需求
+~~~
+
+- and与操作
+
+~~~markdown
+案列:login 同时 参数 2个字符串
+
+1. execution(* login(String,String))
+
+2. execution(*login(..) and args(String,Sring))
+
+注意:与操作不同用于同种类型的切入点函数
+
+案例: register方法 和 login方法作为切入点
+
+execution(* login(..)) and execution(* register(..))	//错误
+execution(* login(..)) or execution(* register(..))		//正确	
+~~~
+
+- or或操作
+
+~~~markdown
+案例: register方法 和 login方法作为切入点
+
+execution(* login(..)) or execution(* register(..))
+~~~
+
+
+
+# 第四、AOP编程
+
+## 1.AOP概念
+
+~~~markdown
+AOP(Aspect Oriented Programing)  面向切面编程 = String动态代理开发
+以切面为基本单位的程序开发,通过切面间的彼此协同,相互调用,完成程序的构建
+切面 = 加入点 + 额外功能
+
+OOP(Object Oriented Programing)  面向对象编程 Java
+以对象为基本单位的程序开发，通过对象间的彼此协同,相互调用.完成程序的构建
+
+POP(Producer Oriented Programing) 面向过程(方法，函数)编程 C
+以过程为基本单位的程序开发，通过过程间的彼此协同，相互调用，完成程序的构建
+~~~
+
+~~~markdown
+AOP的概念:
+		本质就是Spring的动态代理开发，通过代理类为原始类增加额外功能。
+		好处:利于原始类的维护
+
+注意:AOP编程不可能取代OOP，OOP编程有意补充。
+~~~
+
+## 2.AOP编程的开发步骤
+
+~~~markdown
+ 1. 原始对象
+ 2. 额外功能(MethodInterceptor)
+ 3. 切入点
+ 4. 组装切面(额外功能+切入点)	
+~~~
+
+## 3.切面的名词解释
+
+~~~markdown
+ 切面 = 切入点+额外功能
+ 
+ 几何学
+ 	面 = 点 + 相同的性质
+~~~
+
+![image-20200618202800978](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200618202800978.png)
+
+# 第五、AOP的底层实现原理
+
+## 1.核心问题
+
+~~~markdown
+ 1. AOP如何创建动态代理类(动态字节码技术)
+ 2. Spring工厂如何加工创建代理对象
+ 3. 通过原始对象的id值，获得的是代理对象
+~~~
+
+## 2.动态代理类的创建
+
+### 2.1 JDK的动态代理
+
+- Proxy.newProxyInstance方法参数详解
+
+![image-20200620093949446](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200620093949446.png)
+
+![image-20200620094017966](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200620094017966.png)
+
+- 编码
+
+~~~java
+public class TestJDKProxy {
+    public static void main(String[] args) {
+        /*
+            1. 借用类加载器 TestJDKProxy
+                          UserServicelmpl
+            2. JDK8.x前
+            final UserService userService = new UserServicelmpl();
+         */
+        //创建原始对象
+        UserService userService = new UserServicelmpl();
+
+        //jdk动态代理
+        InvocationHandler handler = new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                System.out.println("-------proxy log ----------");
+                Object ret = method.invoke(userService, args);
+                return ret;
+            }
+        };
+        UserService userServiceProxy = (UserService) Proxy.newProxyInstance(TestJDKProxy.class.getClassLoader(), userService.getClass().getInterfaces(), handler);
+        userServiceProxy.login("yang", "123456");
+        userServiceProxy.register(new User());
+
+    }
+}
+~~~
+
+### 2.2 CGlib的动态代理
+
+~~~markdown
+CGlib创建动态代理的原理:父子继承关系创建代理对象，原始类作为父类，代理类作为子类，这样既可以保证二者方法一致，同时在代理类中提供新的实现(额外功能+原始方法)
+~~~
+
+![image-20200620101007405](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200620101007405.png)
+
+- 编码
+
+  ~~~java
+  public class TestCglib {
+      public static void main(String[] args) {
+          // 创建原始对象
+          UserService userService = new UserService();
+  
+          Enhancer enhancer = new Enhancer();
+  
+          enhancer.setClassLoader(TestCglib.class.getClassLoader());
+          enhancer.setSuperclass(userService.getClass());
+  
+          MethodInterceptor interceptor = new MethodInterceptor() {
+              @Override
+              public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+                  System.out.println("--- cglib log ----");
+                  Object invoke = method.invoke(userService, objects);
+                  return invoke;
+              }
+          };
+          enhancer.setCallback(interceptor);
+  
+          UserService userService1 = (UserService) enhancer.create();
+  
+          userService1.login("yang","1234");
+          userService1.register(new User());
+  
+      }
+  }
+  ~~~
+
+### 2.3 总结
+
+~~~markdown
+1. JDK动态代理 Proxy.newProxyInstance() 	通过接口创建代理的实现类
+2. CGlib动态代理   Enhancer					通过继承父类创建的代理类
+~~~
+
+
+
+## 3.Spring工厂如何加工原始对象
+
+- 思路分析
+- ![image-20200620125950281](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200620125950281.png)
+
+- 编码
+
+  ~~~java
+  public class ProxyBeamPostProcessor implements BeanPostProcessor {
+  
+  
+      @Override
+      public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+          return bean;
+      }
+  
+      @Override
+      public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+          InvocationHandler handler = new InvocationHandler() {
+              @Override
+              public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                  System.out.println("new log ---");
+                  Object ret = method.invoke(bean, args);
+                  return ret;
+              }
+          };
+  
+          return Proxy.newProxyInstance(ProxyBeamPostProcessor.class.getClassLoader(),bean.getClass().getInterfaces(),handler);
+      }
+  }
+  ~~~
+
+- 配置文件
+
+     ~~~xml
+<bean id="userService" class="priv.yangkuncheng.factory.UserServicelmpl"/>
+
+<!--        1, 实现benanPostProcessor 进行加工-->
+<!--        2, 配置文件中对BeanPostProcessor进行配置-->
+<bean id="proxyBeanPostProcessor" class="priv.yangkuncheng.factory.ProxyBeamPostProcessor"/>
+     ~~~
+
+
+

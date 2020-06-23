@@ -1,5 +1,13 @@
 
 
+
+
+
+
+
+
+
+
 # 第一章、Spring框架介绍
 
 ## 1.轻量级
@@ -1293,7 +1301,7 @@ Service层的调用者的角度(Controller):需要在Service层书写额外功�
 }
 		UserServiceImp implements UserService{
 			m1 ---> 业务运算 DAO调用
-            m2
+            m2  
 		}
 		UserServiceProxy implements UserService{
 			m1
@@ -1968,12 +1976,381 @@ CGlib创建动态代理的原理:父子继承关系创建代理对象，原始�
 - 配置文件
 
      ~~~xml
-<bean id="userService" class="priv.yangkuncheng.factory.UserServicelmpl"/>
-
-<!--        1, 实现benanPostProcessor 进行加工-->
-<!--        2, 配置文件中对BeanPostProcessor进行配置-->
-<bean id="proxyBeanPostProcessor" class="priv.yangkuncheng.factory.ProxyBeamPostProcessor"/>
+     <bean id="userService" class="priv.yangkuncheng.factory.UserServicelmpl"/>
+     <!--        1, 实现benanPostProcessor 进行加工-->
+     <!--        2, 配置文件中对BeanPostProcessor进行配置-->
+     <bean id="proxyBeanPostProcessor" class="priv.yangkuncheng.factory.ProxyBeamPostProcessor"/>
      ~~~
 
+# 第六章、基于注解的AOP编程
 
+## 1.基于注解的AOP编程开发步骤
+
+### 1.原始对象
+
+### 2.额外功能
+
+### 3.切入点
+
+### 4.组装切面
+
+~~~java
+	# 通过切面类 定义了 额外功能 @Around
+	  		   定义了 切入点   @Around("execution(* login(..))")
+	  		   @Aspect 切面类
+	  		   
+@Aspect
+public class MyAspect {
+    @Around("execution(* login(..))")
+    public Object arround(ProceedingJoinPoint joinPoint) throws Throwable {
+        System.out.println("----log ----");
+
+        Object ret = joinPoint.proceed();
+        return ret;
+    }
+}	  		   
+~~~
+
+~~~xml
+<bean id="userService" class="priv.yangkuncheng.aspect.UserServicelmpl"/>
+<bean id="arround" class="priv.yangkuncheng.aspect.MyAspect"/>
+
+<!--        告知Spring基于注解进行AOP编程-->
+<aop:aspectj-autoproxy/>
+~~~
+
+
+
+## 2.细节
+
+### 1.切入点复用
+
+~~~java
+切入点复用:在切面类中定义一个函数 上面@Pointcut注解 通过这种方式，定义切入点表达式，后续更加有利于切入点复用。
+@Aspect
+public class MyAspect {
+    @Pointcut("execution(* login(..))")
+    public void myPointuct() {}
+    
+    @Around(value = "myPointuct()")
+    public Object arround(ProceedingJoinPoint joinPoint) throws Throwable {
+        System.out.println("----log ----");
+
+        Object ret = joinPoint.proceed();
+        return ret;
+    }
+}    
+~~~
+
+### 2.动态代理的创建方式
+
+~~~markdown
+AOP底层实现 2种代创建方式
+ 1. JDK 通过实现接口 做新的实现类方式 创建代理对象
+ 2. Cglib通过继承父类 做新的子类	  创建代理对象
+ 
+ 默认情况 AOP编程 底层应用JDK动态代理创建方式
+ 如果切换Cglib
+ 	1. 基于注解AOP开发
+ 		<aop:aspectj-autoproxy proxy-target-class="true"/>
+ 	2. 传统的AOP开发
+    	<aop:config proxy-target-class="true">
+    	</aop>
+~~~
+
+# 第八章、AOP阶段知识总结
+
+![image-20200623113959208](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200623113959208.png)
+
+
+
+------
+
+# ---------------------------
+
+# Spring - 持久层整合
+
+# 第一章、持久层整合
+
+## 1.Spring框架为什么要与持久层技术进行整合？
+
+~~~markdown
+1. JavaEE开发需要持久层进行数据库的访问操作
+2. JDBC Hibernate MyBatis进行持久开发过程存在大量的代码冗余
+3. Spring基于模板设计模式对于上述的持久层技术进行了封装
+~~~
+
+## 2.Spring可以与那些持久层技术进行整合？
+
+~~~markdown
+1. JDBC
+		|- JDBCTemlate
+2. Hibernate (JPA)
+		|- HibernateTemplate
+3. MyBatis
+		|- SqlSessionFactoryBean MapperScannerConfigure
+~~~
+
+
+
+# 第二章、Spring与MyBatis整合
+
+## 1.MyBatis开发步骤的回顾
+
+~~~markdown
+1. 实体
+2. 实体别名
+3. 表
+4. 创建DAO接口
+5. 实现Mapper文件
+6. 注册Mapper文件
+7. MybatisAPI调用
+~~~
+
+## 2.Mybatis在开发过程中存在问题
+
+~~~markdown
+配置繁琐 代码冗余
+
+1. 实体
+2. 实体别名 			配置繁琐
+3. 表
+4. 创建DAO接口
+5. 实现Mapper文件
+6. 注册Mapper文件		配置繁琐
+7. MybatisAPI调用      代码冗余
+~~~
+
+## 3.Spring与Mybatis整合思路分析
+
+![image-20200623152137244](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200623152137244.png)
+
+## 4.Spring与Mybatis整合的开发步骤
+
+- 配置文件(ApplicationContext.xml)进行相关配置
+
+  ~~~xml
+  #配置 是需要配置一次
+  <bean id="dataSource" class=" "/>
+  
+  <!-- 创建SqlSessionFactory -->
+  <bean id="ssfb" class="SqlSessionFactoryBean">
+      <property name="dataSource" ref=" "/>
+      <property name="typeAliasesPackage">
+          指定 实体类所在的包 priv.yangkuncheng.entity User
+          										  Product
+      </property>
+      <property name="mapperLocations">
+          	指定 配置文件(映射文件)的路径 还有通用配置
+          	priv.yangkuncheng.mapper/*Mapper.xml
+      </property>
+  </bean>
+  <!-- DAO接口的实现
+  	session ---> session.getMapper() --- xxxDAO实现类对象
+  	XXXDAO	---> XXXDAO
+  -->
+  <bean id="scanner" class="MapperScannerConfigure">
+      <property name="sqlSessionFactoryBeanName" value="ssfb"/>
+      <property name="basePacakge">
+          指定 DAO接口放置的包 priv.yangkuncheng.dao
+      </property>
+  </bean>    
+  ~~~
+
+- 编码
+
+     ~~~markdown
+# 实战经常根据需求 写的代码
+1. 实体
+2. 表
+3. 创建DAO接口
+4. 实现Mapper文件
+     ~~~
+
+## 5.Spring与Mybatis整合编码
+
+- 搭建开发环境 (jar)
+
+     ~~~xml
+<!-- https://mvnrepository.com/artifact/org.springframework/spring-jdbc -->
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-jdbc</artifactId>
+    <version>5.2.7.RELEASE</version>
+</dependency>
+
+<!-- https://mvnrepository.com/artifact/org.mybatis/mybatis-spring -->
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis-spring</artifactId>
+    <version>2.0.5</version>
+</dependency>
+
+<!-- https://mvnrepository.com/artifact/com.alibaba/druid -->
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>druid</artifactId>
+    <version>1.1.22</version>
+</dependency>
+
+<!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>8.0.20</version>
+</dependency>
+
+<!-- https://mvnrepository.com/artifact/org.mybatis/mybatis -->
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.5</version>
+</dependency>
+     ~~~
+
+- Spring配置文件的配置
+
+  ~~~xml
+  <!--  连接池-->
+  <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+      <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+      <property name="url" value="jdbc:mysql://localhost:3306/book ?serverTimezone=UTC"/>
+      <property name="username" value="root"/>
+      <property name="password" value=""/>
+  </bean>
+  
+  <!--    创建SqlSessionFactory SqlSessionFactoryBean-->
+  <bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+      <property name="dataSource" ref="dataSource"></property>
+      <property name="typeAliasesPackage" value="priv.yangkuncheng.entity"></property>
+      <property name="mapperLocations">
+          <list>
+              <value>classpath:priv.yangkuncheng.mapper/*Mapper.xml</value>
+          </list>
+      </property>
+  </bean>
+  
+  <!--    创建DAO对象 MapperScannerConfigure&ndash;&gt;-->
+  
+  <bean id="scanner" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+      <property name="sqlSessionFactoryBeanName" value="sqlSessionFactoryBeam"></property>
+      <property name="basePackage" value="priv.yangkuncheng.dao"></property>
+  </bean>
+  ~~~
+
+- 编码
+
+~~~markdown
+1. 实体
+2. 表
+3. 创建DAO接口
+4. 实现Mapper文件
+~~~
+
+## 6.Spring与Mybatis整合细节
+
+- 问题: Spring与Mybatis整合后，为什么DAO不提交事物，但是数据能够插入数据库中？
+
+~~~markdown
+Connection --> tx
+Mybatis(Connection)
+
+本质上控制连接对象(Connection) ---> 连接池(DataSource)
+1. Mybatis提供的连接池对象 ---> 创建Connection
+	Connection.setAutoCommit(false) 手工的控制了事物 ，操作完成后， 手工提交
+2. Druid(C3P0 DBCP)作为连接池 --->创建Connection
+	Connection.setAutoCommit(true)true默认值 保持自动控制事物 ，一条sql自动提交
+答案:因为Spring与Mybatis整合时，引入了外部连接池对象，保持自动的事物提交这个机制(Connection.setAutoCommit(true)),不需要手工进行事物的操作，也能进行事物的提交
+
+注意：未来实战中，还会手工控制事物(多条sql一起成功，一起失败)，后续Spring通过事物控制解决这个问题
+~~~
+
+
+
+# 第三章、Spring的事务处理
+
+## 1.什么是事务？
+
+~~~markdown
+保证业务操作完成性的一种数据库机制
+
+事物的四个特点 ： A C I D
+1. A 原子性
+2. C 一致性
+3. I 隔离性
+4. D 持久性
+~~~
+
+## 2.如何控制事务？
+
+~~~markdown
+JDBC:
+	Connection.setAutoCommit(false);
+	Connection.commit();
+	Connection.rollback();
+Mybatis:
+	Mybatis自动开启事务
+	
+	sqlSession(Connection).commit();
+	sqlSession(Connection).rollback();
+	
+结论:控制事务的底层 都是Connection对象完成。
+~~~
+
+## 3.Spring控制事务的开发
+
+~~~markdown
+Spring是通过AOp的方式进行事物开发
+~~~
+
+### 1.原始对象
+
+~~~markdown
+public class XXXUserServiceImpl{
+	private xxxDAO xxxDAO
+	set get
+	
+	1. 原始对象 -->原始方法 --> 核心功能 (业务处理+DAO调用）
+	2. DAO作为Service的成员变量，依赖注入的方式进行赋值
+}
+~~~
+
+### 2.额外功能
+
+~~~markdown
+ 1. org.springframework.jdbc.datasource.DataSourceTransactionManager
+ 2. 注入DataSource
+ 1. MethodInterceptor
+ public Object invoke(MethodInvocation invocation){
+ 	try{
+ 		Connection.setAutoCommit(false);
+ 		Object ret = invocation.proceed();
+ 		Connection.commit();
+ 	}catch(Exception e){
+ 	Connection.rollback();
+ 	}
+ 	return ret;
+ }
+ 2. @Aspect
+ 	@Around
+~~~
+
+### 3.切入点
+
+~~~markdown
+@Transactional
+事务的额外功能加入给那些业务方法
+
+1. 类上：类中所有的方法都会加入事务
+2. 方法上：这个方法会加入事务
+~~~
+
+### 4.组装切面
+
+~~~markdown
+1. 切入点
+2. 额外功能
+
+<tx:annotation-driven transaction-manager=" "/>
+~~~
 

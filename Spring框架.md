@@ -8,6 +8,8 @@
 
 
 
+
+
 # 第一章、Spring框架介绍
 
 ## 1.轻量级
@@ -2160,11 +2162,16 @@ AOP底层实现 2种代创建方式
 - 编码
 
      ~~~markdown
+     
+     ~~~
 # 实战经常根据需求 写的代码
 1. 实体
 2. 表
 3. 创建DAO接口
 4. 实现Mapper文件
+   
+     ~~~
+     
      ~~~
 
 ## 5.Spring与Mybatis整合编码
@@ -2172,12 +2179,13 @@ AOP底层实现 2种代创建方式
 - 搭建开发环境 (jar)
 
      ~~~xml
-<!-- https://mvnrepository.com/artifact/org.springframework/spring-jdbc -->
-<dependency>
-    <groupId>org.springframework</groupId>
-    <artifactId>spring-jdbc</artifactId>
-    <version>5.2.7.RELEASE</version>
-</dependency>
+     <!-- https://mvnrepository.com/artifact/org.springframework/spring-jdbc -->
+     <dependency>
+     <groupId>org.springframework</groupId>
+     <artifactId>spring-jdbc</artifactId>
+     <version>5.2.7.RELEASE</version>
+     </dependency>
+     ~~~
 
 <!-- https://mvnrepository.com/artifact/org.mybatis/mybatis-spring -->
 <dependency>
@@ -2353,4 +2361,510 @@ public class XXXUserServiceImpl{
 
 <tx:annotation-driven transaction-manager=" "/>
 ~~~
+
+
+
+## 4.Spring控制事物的编码
+
+- 搭建开发环境
+
+~~~xml
+<!-- https://mvnrepository.com/artifact/org.springframework/spring-tx -->
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-tx</artifactId>
+    <version>5.2.7.RELEASE</version>
+</dependency>
+~~~
+
+- 编码
+
+~~~xml
+<bean id="userService" class="priv.yangkuncheng.service.UserServiceimpl">
+    <property name="userDAO" ref="userDAO"/>
+</bean>
+
+<bean id="dataSourceTransactionMannger" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    <property name="dataSource" ref="dataSource"/>
+</bean>
+
+<tx:annotation-driven transaction-manager="dataSourceTransactionManager"/>
+~~~
+
+# 第四章、Spring中的事务属性(Transaction Attribute)
+
+## 1.什么是事务属性
+
+~~~markdown
+属性:描述物体特征的一系列值
+	性别 身高 体重 ...
+事务属性:描述事务特征的一系列值
+1. 隔离属性
+2. 传播属性
+3. 只读属性
+4. 超时属性
+5. 异常属性
+~~~
+
+## 2.如何添加事务属性
+
+~~~markdown
+@Transactional(isolation=,propagation=,readOnly=,timeout=,rollbackFor=,noRollbackFor=,)
+~~~
+
+## 3.事务属性详解
+
+### 1.隔离属性（isolation）
+
+- 隔离属性的概念
+
+~~~markdown
+概念:他描述了事物解决并发问题的特征
+1. 什么是并发？
+	多个事务(用户)在同一时间，访问操作了相同的数据
+	
+	同一时间: 0.000几秒 微小前 微小后
+2. 并发会产生那些问题？
+	1. 脏读
+	2. 不可重复读
+	3. 幻影读
+3. 并发问题如何解决
+	通过隔离属性解决，隔离属性中设置不同的值，解决并发处理过程中的问题。
+~~~
+
+- 事务并发产生的问题
+
+  - 脏读
+
+  ~~~markdown
+  一个事务，读取了另一个事务中没有提交的数据。会在本事务中产生数据不一致的问题
+  解决方案  @Transactional(isolation=Isolation.READ_COMMITTED)
+  ~~~
+
+  - 不可重复读
+
+  ~~~markdown
+  一个事务中，多次读取相同的数据，但是读取结果不一样。会在本事务中产生数据不一致的问题
+  注意： 1 不是脏读 2 一个事务中
+  解决方案  @Transactional(isolation=Isolation.REPEATABLE_READ)
+  本质： 一把行锁
+  ~~~
+
+  - 幻影读
+
+  ~~~markdown
+  一个事务中，多次对整表进行查询统计，但是结果不一样，会在本事务中产生数据不一致的问题
+  解决方案  @Transactional(isolation=Isolation.SERIALIZABLE)
+  本质：表锁
+  ~~~
+
+  - 总结
+
+  ~~~markdown
+  并发安全: SERIALIZABLE > REPEATABLE_READ > READ_COMMITTED
+  运行效率: READ_COMMITTED > REPEATABLE_READ > SERIALIZABLE
+  ~~~
+
+- 数据库对于隔离属性的支持
+
+  | 隔离属性的值              | MySQL | Oracle |
+  | ------------------------- | ----- | ------ |
+  | ISOLATION_READ_COMMITTED  | √     | √      |
+  | ISOLATION_REPEATABLE_READ | √     | ×      |
+  | ISOLATION_SERIALIZABLE    | √     | ×      |
+
+  ~~~markdown
+  Oracle不支持ISOLATION_REPEATABLE_READ值 如何解决不可重复读？
+  采用的是最多版本比对的方式 解决不可重复读的问题
+  ~~~
+
+- 默认隔离属性
+
+     ~~~markdown
+     ISOLATION_DEFAULT:会调用不同数据库所设置的默认隔离属性
+     	MySQL : REPEATABLE_READ
+     	Oracle : READ_COMMITTED
+     ~~~
+
+- 隔离属性在实战中的建议
+
+     ~~~markdown
+     推荐使用Spring指定的ISOLATION_DEFAULT
+     1. MySQL  repeatable_read
+     2. Oracle read_commited
+     
+     在未来实战中，并发访问情况 很低
+     
+     如果真遇到并发问题，乐观锁
+     	Hibernate(JPA) Version
+     	MyBatis		   通过拦截器自定义开发
+     ~~~
+
+### 2.传播属性(PROPAGATION)
+
+- 传播属性的概念
+
+       ~~~markdown
+
+   概念:他描述了事物解决嵌套问题的特征
+
+什么叫做事物的嵌套？
+	他指的是一个大的事物中，包含了若干个小的事务
+问题：大事务中融入了很多小的事务，他们彼此影响，最终就会导致外部大的事务，丧失了事务的原子性	
+       ~~~
+
+- 传播属性的值及其用法
+
+  ![image-20200625113414026](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200625113414026.png)
+
+- 默认的传播属性
+
+  ~~~markdown
+  REQUIRED是传播属性的默认值
+  ~~~
+
+- 推荐传播属性的使用方式
+
+  ~~~markdown
+  增删改  方法:直接使用默认值REQUIRED
+  查询	  操作:显示指定传播属性的值为SUPPORTS
+  ~~~
+
+### 3.只读属性(readOnly)
+
+~~~markdown
+针对于只进行查询操作的业务方法，可以加入只读属性，提供运行效率
+
+默认值:false
+~~~
+
+### 4.超时属性(timeout)
+
+~~~markdown
+指定了事务等待的最长时间
+
+1. 为什么事务进行等待？
+	当前事务访问数据时，有可能访问的数据被别的事务进行加锁处理，那么此时本事务就必须进行等待
+2. 等待时间 秒
+3. 如何应用 @Transactional(timeout=2)
+4. 超时属性的默认值 -1
+	最终由对应的数据库来指定
+~~~
+
+### 5.异常属性
+
+~~~markdown
+Spring事务处理过程中
+默认 对于RuntimeException及其子类 采用的是回滚的策略
+默认 对于Exception及其子类 采用的是提交的策略
+
+rollbackFor = {java.lang.Exception.xxx.xxx}
+noRollbackFor = {java.lang.RuntimeException.xxx.xxx}
+
+@Transactional(rollbackFor = {java.lang.Exceptin.class},noRollbackFor = {java.lang.RuntimeException.class})
+
+建议 ：实战中使用RuntimeException及其子类 使用事务异常属性的默认值
+~~~
+
+## 4.事务属性常见配置总结
+
+~~~markdown
+1. 隔离属性		默认值
+2. 传播属性		Required(默认值) 增删改 Supports 查询操作
+3. 只读属性		readOnly false  增删改	true	查询操作
+4. 超时属性		默认值 -1
+5. 异常属性		默认值
+
+增删改操作 @Transactional
+查询操作   @Transactional(propagation=propagation.SUPPORTS,readOnly=true)	
+~~~
+
+## 5.基于标签的事务配置方式(事务开发的第二种形式)
+
+~~~XML
+基于标签的事务配置
+<bean id="userService" class="priv.yangkuncheng.service.UserServiceImpl">
+    <property name="userDAO" ref="userDAO"/>
+</bean>
+
+<bean id="dataSourceTransactionManger" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    <property name="dataSource" ref="dataSource"/>
+</bean>
+
+事务属性
+<tx:advice id="txAdvice" transacation-manager="dataSourceTransactionManger">
+    <tx:attributes>
+        <tx:method name="register" isoloation="",propagation=""></tx:method>
+        <tx:method name="login" ....></tx:method>
+    </tx:attributes>>
+</tx:advice>
+~~~
+
+- 基于标签的事务配置在实战中的应用方式
+
+  ~~~xml
+  <bean id="userService" class="priv.yangkuncheng.service.UserServiceImpl">
+      <property name="userDAO" ref="userDAO"/>
+  </bean>
+  
+  <bean id="dataSourceTransactionManger" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+      <property name="dataSource" ref="dataSource"/>
+  </bean>
+  
+  编程时候 service中负责进行增删改操作的方法 都已modify开头
+  						查询操作 命名无所谓
+  <tx:advice id="txAdvice" transacation-manager="dataSourceTransactionManger">
+      <tx:attributes>
+          <tx:method name="modify*"></tx:method>
+          <tx:method name="*" propagation="SUPPORTS" read-Only="true"></tx:method>
+      </tx:attributes>>
+  </tx:advice>
+  
+  应用的过程中，service放置到service包中
+  <aop:config>
+  	<aop:pointcut id="pc" expression="execution(* priv.yangkuncheng..*.*(..))">	 </aop:pointcut>
+      <aop:advisor advice-ref="txAdvice" pointcut-ref="pc"></aop:advisor>
+  </aop:config>
+  ~~~
+
+  
+
+------
+
+# -----------------------------
+
+# MVC框架整合
+
+# 第一章、MVC框架整合思想
+
+## 1.搭建Web运行环境
+
+~~~xml
+<dependency>
+    <groupId>javax.servlet</groupId>
+    <artifactId>javax.servlet-api</artifactId>
+    <version>4.0.1</version>
+    <scope>provided</scope>
+</dependency>
+
+<dependency>
+    <groupId>javax.servlet</groupId>
+    <artifactId>jstl</artifactId>
+    <version>1.2</version>
+</dependency>
+
+<dependency>
+    <groupId>javax.servlet.jsp</groupId>
+    <artifactId>javax.servlet.jsp-api</artifactId>
+    <version>2.3.3</version>
+    <scope>provided</scope>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-web</artifactId>
+    <version>5.2.6.RELEASE</version>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-core</artifactId>
+    <version>5.2.7.RELEASE</version>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-beans</artifactId>
+    <version>5.2.7.RELEASE</version>
+</dependency>
+~~~
+
+## 2.为什么要整合MVC框架
+
+~~~markdown
+1. MVC框架提供了控制器(Controller)调用Service
+	DAO ---> Service
+2. 请求响应的处理
+3. 接受请求参数 request.getParmeter("")
+4. 控制程序的运行流程
+5. 视图解析 (JSP JSON Freemarker Thyemeleaf)
+~~~
+
+## 3.Spring可以整合那些MVC框架
+
+~~~markdown
+1. struct1
+2. webwork
+3. jsf
+4. struts2
+5. springMVC
+~~~
+
+## 4.Spring整合MVC框架的核心思路
+
+### 1.准备工厂
+
+~~~markdown
+1. web开发过程中如何创建工厂
+	ApplicationContext ctx = new ClassPathXmlApplicationContext("/applicationContext.xml");
+								WebXmlApplicationContext()
+2. 如何保证工厂唯一同时被共用
+   被共用:Web request|session|ServletContext(application)
+   工厂储存在ServletContext这个作用域中 ServletContext.setAttribute("xxx",ctx);
+   
+   唯一:ServletContext对象 创建的同时 ---> ApplicationContext ctx = new ClassPathXmlApplicationContext("/applicationContext.xml");
+   
+   ServletContextListene ---> ApplicationContext ctx = new ClassPathXmlApplicationContext("/applicationContext.xml");
+   ServletContextListene 在servletContext对象创建的同时，被调用(只会被调用一次)，把工厂创建的代码，写在ServletContextListener中，也会保证只调用一次，最终工厂就保证了唯一性
+3. 总结   
+	ServletContextListener(唯一)
+	ApplicationContext ctx = new ClassPathXmlApplicationContext("/applicationContext.xml");
+	ServletContext.setAttribute("xxx",ctx)(共用)
+
+4. Spring封装了一个ContextLoaderListener
+	1. 创建工厂
+	2. 把工厂存在ServletContext中
+~~~
+
+~~~xml
+ContextLoaderListener使用方式
+
+web.xml
+
+<listener>
+	<listener-class>org.springframenwork.web.context.ContextLoaderListener</listener-class>
+</listener>
+
+<context-param>
+    <param-name>contextConfigLocation</param-name>
+    <param-value>classpath:applicationContext.xml</param-value>
+</context-param>
+~~~
+
+### 2.代码整合
+
+~~~markdown
+依赖注入:把Service对象注入个控制器对象.
+~~~
+
+![image-20200625172723581](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200625172723581.png)
+
+
+
+# 第二章、Spring与Struts2框架整合
+
+## 1.Spring与Struts2整合思路分析
+
+~~~markdown
+1. Struts2中的Action需要通过Spring的依赖注入获得Service对象
+~~~
+
+## 2.Spring与Struts2整合的编码实现
+
+- 搭建开发环境
+
+  -   引入相关jar Struts2
+
+    ```xml
+    <dependency>
+    	<groupId>org.apache.struts</groupId>
+    	<artifactId>struts2-spring-plugin</artifactId>
+    	<version>2.5.22</version>
+    </dependency>
+    ```
+
+  -   引入对应的配置文件
+
+      - applicationContext.xml
+      - struts.xml
+      - log4j.properties
+
+  - 初始化配置
+
+    ~~~xml
+    <web-app>
+        <listener>
+            <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+        </listener>
+    
+        <context-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:applicationcontext.xml</param-value>
+        </context-param>
+    
+        <filter>
+            <filter-name>struts2</filter-name>
+            <filter-class>org.apache.struts2.dispatcher.filter.StrutsPrepareAndExecuteFilter</filter-class>
+        </filter>
+    
+        <filter-mapping>
+            <filter-name>struts2</filter-name>
+            <url-pattern>/*</url-pattern>
+        </filter-mapping>
+    </web-app>
+    ~~~
+
+    - Spring(ContextLoaderListener -> Web.xml)
+    - Struts2(Filet -> Web.xml)
+
+- 编码
+
+  - 开发Service对象
+
+    ~~~xml
+    最终在Spring配置文件中创建Service对象
+    <bean id="user" class="priv.yangkuncheng.struts2.UserServiceImpl"></bean>
+    ~~~
+
+  - 开发Action对象
+  
+    - 开发类
+  
+      ~~~java
+      public class RegAction implements Action{
+          private UserService userService;
+          set get
+              
+          public Stiring execute(){
+              userService.register();
+              return Action.SUCCESS;
+          }
+      }
+      
+      
+      ~~~
+  
+    - Spring
+  
+      ~~~xml
+      <bean id="regAction" scope="prototype" class="priv.yangkuncheng.struts2.RegAction">
+          <property name="userService" ref="user"/>
+      </bean>
+      ~~~
+  
+    - Struts2
+  
+      ~~~xml
+      <struts>
+          <package name="ykc" extends="struts-default" >
+              <action name="reg" class="priv.yangkuncheng.struts2.RegAction">
+                  <result name="success">/index.jsp</result>
+              </action>
+          </package>
+      </struts>
+      ~~~
+
+## 3.Spring+Struts2+Mybatis整合(SSM)
+
+### 1.思路分析
+
+~~~markdown
+SSM = Spring+Struts2 Spring+Mybatis
+~~~
+
+![image-20200625205850708](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200625205850708.png)
+
+###     2.整合编码
+
+
 

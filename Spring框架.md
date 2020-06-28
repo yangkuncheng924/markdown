@@ -2866,5 +2866,360 @@ SSM = Spring+Struts2 Spring+Mybatis
 
 ###     2.整合编码
 
+搭建开发环境
 
+-   引入相关jar (Spring+Struts2+Mybatis)
 
+    ```xml
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-web</artifactId>
+        <version>5.2.6.RELEASE</version>
+    </dependency>
+    
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-core</artifactId>
+        <version>5.2.7.RELEASE</version>
+    </dependency>
+    
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-beans</artifactId>
+        <version>5.2.7.RELEASE</version>
+    </dependency>
+    
+    <!-- https://mvnrepository.com/artifact/org.apache.struts/struts2-core -->
+    <dependency>
+        <groupId>org.apache.struts</groupId>
+        <artifactId>struts2-core</artifactId>
+        <version>2.5.22</version>
+    </dependency>
+    
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.12</version>
+        <scope>test</scope>
+    </dependency>
+    
+    <!-- https://mvnrepository.com/artifact/org.springframework/spring-aop -->
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-aop</artifactId>
+        <version>5.2.7.RELEASE</version>
+    </dependency>
+    
+    <!-- https://mvnrepository.com/artifact/org.aspectj/aspectjrt -->
+    <dependency>
+        <groupId>org.aspectj</groupId>
+        <artifactId>aspectjrt</artifactId>
+        <version>1.9.5</version>
+    </dependency>
+    
+    <!-- https://mvnrepository.com/artifact/org.aspectj/aspectjweaver -->
+    <dependency>
+        <groupId>org.aspectj</groupId>
+        <artifactId>aspectjweaver</artifactId>
+        <version>1.9.5</version>
+    </dependency>
+    
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-context</artifactId>
+        <version>5.2.6.RELEASE</version>
+        <scope>test</scope>
+    </dependency>
+    
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-context</artifactId>
+        <version>5.2.6.RELEASE</version>
+        <scope>compile</scope>
+    </dependency>
+    ```
+
+-   引入对应的配置文件
+
+    - applicationContext.xml
+    - struts.xml
+    - log4j.properties
+    - xxxxMapper.xml
+
+- 初始化配置
+
+  - Spring(ContextLoaderListener -> Web.xml)
+  - Struts2(Filet -> Web.xml)
+
+  ~~~xml
+  Spring(ContextLoaderListener -> Web.xml)
+  <listener>
+      <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+  </listener>
+  
+  <context-param>
+      <param-name>contextConfigLocation</param-name>
+      <param-value>classpath:applicationcontext.xml</param-value>
+  </context-param>
+  
+  Struts2(Filet -> Web.xml)
+  <filter>
+      <filter-name>struts2</filter-name>
+      <filter-class>org.apache.struts2.dispatcher.filter.StrutsPrepareAndExecuteFilter</filter-class>
+  </filter>
+  
+  <filter-mapping>
+      <filter-name>struts2</filter-name>
+      <url-pattern>/*</url-pattern>
+  </filter-mapping>
+  ~~~
+
+-   编码
+
+    -   DAO(Spring+Mybatis)
+
+        ~~~markdown
+        1. 配置文件的配置
+        	1.DataSource
+        	2.SqlSessionFactory ---> SqlSessionFactoryBean
+        		1. dataSource
+        		2. dypeAlicsesPachage
+        		3. mapperLocations
+        	3.MapperScannerConfigur ---> DAO接口实现类
+        2. 编码
+        	1. entity
+        	2. table
+        	3. DAO接口
+        	4. 实现Mapper文件
+        ~~~
+
+    -   Service(Spring添加事务)
+
+        ~~~markdown
+        1. 原始对象 ---> 注入DAO
+        2. 额外功能 ---> DataSourceTransactionManager ---> dataSource
+        3. 切入点+事务属性
+        	@Transactional(propagation,readOnly...)
+        4. 组装切面
+        	<tx:annotation-driven>
+        ~~~
+
+    -   Controller(Spring+Struts2)
+
+        ~~~markdown
+        1. 开发控制器 implements Action 注入Service
+        2. Spring的配置文件
+        	1. 注入Service
+        	2. scope = prototype
+        3. struts.xml
+        	<action class="spring配置文件中action对应的id值">
+        
+        ~~~
+
+## 4.Spring开发过程中多配置文件的处理
+
+![image-20200626203936331](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200626203936331.png)
+
+------
+
+# ------------------------------
+
+# 注解编程
+
+# 第一章、注解基础概念
+
+## 1.什么是注解编程
+
+~~~markdown
+指的是在类或者方法上加入特定的注解(@XXX)，完成特定功能的开发
+
+	@Component
+	public class XXX{}
+~~~
+
+## 2.为什么要讲解注解编程？
+
+~~~markdown
+1. 注解开发方便
+	代码简洁 开发速度大大提升
+2. Spring开发潮流
+	Spring2.x引入注解 Spring3.x完善注解 Springboot普及 推广注解编程
+~~~
+
+## 3.注解的作用
+
+- 替换XML这种配置形式 简化配置
+
+  ![image-20200626212240537](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200626212240537.png)
+
+- 替换接口 实现调用双方的契约性
+
+  ~~~markdown
+  通过注解的方式，在功能调用者和功能提供者之间达成约定，进而进行功能的调用。因为注解应用更为方便灵活，所以在现在的开发中，更推荐通过注解的形式，完成
+  ~~~
+
+  ![image-20200626213238570](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200626213238570.png)
+
+## 4.Spring注解的发展历程
+
+~~~markdown
+1. Spring2.x开始支持注解编程 @Component @Service @Scope..
+	目的： 提供的这些注解只是为了在某些情况下简化xml的配置 作为xml开发的有益补充。
+2. Spring3.x @Configuration @Bean..
+	目的： 彻底替换XML，基于纯注解编程
+3. Spring4.x SpringBoot
+	提倡使用注解常见开发
+~~~
+
+## 5.Spring注解开发的一个问题
+
+~~~markdown
+Spring基于注解进行配置后，还能否解耦合呢？
+
+在Spring框架应用注解时，如果对注解配置的内容不满意，可以通过Spring配置文件进行覆盖。
+~~~
+
+# 第二章、Spring的基础注解(Spring2.x)
+
+~~~markdown
+这个阶段的注解，仅仅是简化XML的基础配置，并不能完全替代XML
+~~~
+
+## 1.对象创建相关注解
+
+- 搭建开发环境
+
+  ~~~xml
+  <context:component-scan base-package="priv.yangkuncheng"/>
+  
+  作用：让Spring框架在设置包及其子包中扫描对应的注解，时期生效
+  ~~~
+
+- 对象创建相关注解
+
+  - @Component
+
+    ~~~markdown
+    作用： 替换原有Spring配置文件中的<bean>标签
+    注意：
+    	id属性 compoent注解 提供了默认的设置方式 首单词首字母小写
+    	class属性 通过反射获得class内容
+    ~~~
+
+    ![image-20200627101610611](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200627101610611.png)
+
+  - 注解代码实现
+
+    ~~~java
+    @Component("u")
+    public class User implements Serializable {
+    
+    }
+    ApplicationContext ctx = new ClassPathXmlApplicationContext("/applicationContext.xml");
+    User user = (User) ctx.getBean("u");
+    ~~~
+
+  - Spring配置文件覆盖注解配置内容
+
+    ~~~xml
+    applicationContext.xml
+    
+    <bean id="u" class="priv.yangkuncheng.bean.User"/>
+    
+    id值和class的值要和注解中的设置保持一致
+    ~~~
+
+    
+
+  - @Component的衍生注解
+
+    ~~~markdown
+    @Repository ---> XXXDAO
+    	@Repository
+    	public class UserDAO{
+    	}
+    	
+    	@Service
+    	 @Service
+    	 public class UserService{
+    	 }
+    	 
+    	 @Controller
+    	  @Controller
+    	  public class RegAction{  
+    	  }
+    注意：本质上这些衍生注解就是@Component
+    	作用<bean>
+    	细节 @Service("s")
+    	
+    目的:更加准确的表达一个类型的作用
+    
+    注意： Spring整合Mybatis开发过程中 不使用@Repository @Component
+    ~~~
+
+- @Scope注解
+
+  ~~~markdown
+  作用： 控制简单对象的创建次数
+  注意： 不添加@Scope Spring提供默认值 singleton
+  <bean id="" class="" scope="singleton|prototype">
+  ~~~
+
+- @Lazy注解
+
+  ~~~markdown
+  作用： 延迟创建单实例对象
+  注意： 一旦使用了@Lazy注解后，Spring会在使用这个对象时候，进行这个对象的创建
+  <bean id="" class="" lazy="false"/>
+  ~~~
+
+- 生命周期方法相关注解
+
+  ~~~markdown
+  1. 初始化相关方法 @PostConstruct
+  	InitializingBean
+  	<bean init-method=""/>
+  2. 销毁方法 @PreDestroy
+  	DisposableBean
+  	<bean destory-method=""/>
+  注意： 1.上述的两个注解并不是Spring提供 JSR 250
+  <!-- https://mvnrepository.com/artifact/javax.annotation/jsr250-api -->
+  <dependency>
+  	<groupId>javax.annotation</groupId>
+  	<artifactId>jsr250-api</artifactId>
+  	<version>1.0</version>
+  </dependency>
+  ~~~
+
+## 2.注入相关注解
+
+- 用户自定义类型 @Autowired
+
+  ![image-20200627123652540](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200627123652540.png)
+
+~~~markdown
+@Autowired细节
+1. Autowired注解基于类型进行注入
+	基于类型的注入：注入对象的类型，必须与目标成员变量类型相同或者是其子类(实现类)
+	
+2. Autowired Qualifier 基于名字进行注入
+	基于名字的注入：注入对象的id值，必须与Qualifier注解中设置的名字相同
+	
+3. Autowired注解放置位置
+	3.1 放置在对应成员变量的set方法上
+	3.2 直接把这个注解放置在成员变量之上，Spring通过反射直接对成员变量进行注入赋值 [推荐]
+	
+4. JavaEE规范中类似功能的注解
+	JSR250 @Resouce(name="userDAOImpl")基于名字进行注入
+			@Autowired()
+			@Qualifier("userDAOImpl")
+			注意:如果在应用Resource注解时，名字没有配对成功，那么他会继续按照类型进行注入
+	JSR330 @Inject 作用 @Autowired完全一致 基于类型进行注入 ---> EJB 3.0
+    	<dependency>
+    		<groupId>javax.inject</groupId>
+    		<artifactId>javax.inject</artifactId>
+    		<version>1</version>
+    	</dependency>	
+~~~
+
+- JDK类型

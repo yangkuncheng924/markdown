@@ -1,0 +1,690 @@
+# MyBatis概述
+
+# 一.MyBatis简介
+
+MyBati是apache的一个开源项目ibatis，2010年这个项目有apache softwarefoundation迁移到google code，并且改名为**Mybatis**，2013年11月迁移到github
+
+
+
+**Mybatis**是一个实现乐数据持久化的开源框架，简单理解就是对jdbc进行封装
+
+
+
+**MyBatis**的优点
+
+- 与jdb相比 减少了代码量
+- **Mybatis**是简单持久化框架 简单易学
+- 灵活，不会对应用程序或者数据库的现有设计强加任何影响 sql卸载XML里，从程序代码进行分离，降低耦合，便于管理重用
+- 提供XML标签，支持编写动态sql语句
+- 提供映射标签，支持对象与数据库的orm字段关系映射
+
+
+
+**MyBatis**的缺点
+
+- SQL语句的编写工作量较大，尤其是字段多、关联表多，更是如此，对开发人员编写SQL语句有一定功底要求
+- SQL语句依赖于数据库，导致数据库一致性差，不能随便更换数据库
+
+
+
+**MyBatis**的开发方式
+
+- 使用原生接口
+- Mapper代理实现自定义接口
+
+
+
+# 二、Mybatis基本使用
+
+## 1.配置环境
+
+- 配置依赖 pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.5</version>
+</dependency>
+
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>8.0.20</version>
+</dependency>
+
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.12</version>
+    <scope>provided</scope>
+</dependency>
+~~~
+
+## 2.使用原生接口实现
+
+### 	1.创建sql语句
+
+~~~sql
+create table t_account(
+    id int primary key auto_increment,
+    username varchar(11),
+    password varchar(11),
+    age int
+)
+~~~
+
+###   2.新建数据表对应的实体类 Account
+
+~~~java
+package priv.yangkuncheng.entity;
+
+import lombok.Data;
+
+@Data
+public class Account {
+    private long id;
+    private String username;
+    private String password;
+    private int age;
+}
+~~~
+
+### 3.创建Mybatis配置文件 config.xml 文件名可自定义、
+
+~~~xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <typeAliases>
+    </typeAliases>
+
+    <environments default="mysql">
+        <environment id="mysql">
+            <!--使用jdbc事务管理 -->
+            <transactionManager type="JDBC"/>
+            <!-- 数据库连接池 -->
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/test?useUnicode=true&amp;characterEncoding=UTF-8"/>
+                <property name="username" value="root"/>
+                <property name="password" value='123'/>
+            </dataSource>
+        </environment>
+    </environments>
+    <!-- 引入映射配置文件 -->
+    <mappers>
+    </mappers>
+</configuration>
+~~~
+
+### 4.配置Mapper.xml文件	管理该对象数据的sql
+
+~~~xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="priv.yangkuncheng.mapper.AccountMapper">
+    <insert id="save" parameterType="priv.yangkuncheng.entity.Account">
+        insert into t_account(username,password,age) values(#{username},#{password},#{age})
+    </insert>
+</mapper>
+~~~
+
+- namespace 通常设置为文件所在包+文件名的形式
+- insert 标签表示执行添加操作
+- select 标签表示查询操作
+- update 标签表示更新操作
+- delete 标签表示删除操作
+- id 是实际调用 mybatis方法时需要用到的参数
+- parameterType是调用对应方法时参数的数据类型
+
+
+
+### 5.在全局配置文件 config.xml中注册AccountMapper.xml
+
+~~~xml
+<!-- 引入映射配置文件 -->
+<mappers>
+    <mapper resource="priv/yangkuncheng/mapper/AccountMapper.xml"></mapper>
+</mappers>
+~~~
+
+### 6.调用mybatis接口执行添加操作
+
+~~~java
+public class Test {
+    public static void main(String[] args) {
+        InputStream inputStream = Test.class.getClassLoader().getResourceAsStream("config.xml");
+
+        SqlSessionFactoryBuilder sqlSessionFactoryBuilder = new SqlSessionFactoryBuilder();
+
+        SqlSessionFactory sqlSessionFactory = sqlSessionFactoryBuilder.build(inputStream);
+
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+
+        String statement = "priv.yangkuncheng.mapper.AccountMapper.save";
+
+        Account account = new Account(1, "杨坤城", "123", 22);
+
+        sqlSession.insert(statement,account);
+
+        sqlSession.commit();
+    }
+}
+~~~
+
+## 3.Mapper代理实现自定义接口
+
+### 1.自定义接口，定义相关业务方法
+
+~~~java
+public interface AccountRepository {
+    public int save(Account account);
+    public int update(Account account);
+    public int deleteById(long id);
+    public List<Account> findAll();
+    public Account findById(long id);
+}
+~~~
+
+
+
+### 2.编写与方法相对应的Mapper.xml
+
+starement标签可根据SQL执行的业务选择insert、delete、update、select
+
+
+
+Mybatis框架会根据规则自动创建接口实现类的代理对象
+
+~~~markdown
+规则:
+	Mapper.xml中namespace为接口的全类名
+	Mapper.xml中statement的id为接口中对应的方法名
+	Mapper.xml中statement的parameterType和接口中对应方法的参数类型一致
+	Mapper.xml中statement的resultType和接口中对应方法的返回值类型一致
+~~~
+
+~~~xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="priv.yangkuncheng.repository.AccountRepository">
+    <insert id="save" parameterType="priv.yangkuncheng.entity.Account">
+            insert into t_account(username,password,age) values(#{username},#{password},#{age})
+    </insert>
+
+    <update id="update" parameterType="priv.yangkuncheng.entity.Account">
+            update t_account set username = #{username},password = #{password},age = #{age} where id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        delete from t_account where id = #{id}
+    </delete>
+
+    <select id="findAll" resultType="priv.yangkuncheng.entity.Account">
+        select * from t_account
+    </select>
+
+    <select id="findById" parameterType="long" resultType="priv.yangkuncheng.entity.Account">
+        select * from t_account where id = #{id}
+    </select>
+    
+</mapper>
+~~~
+
+- 在config.xml添加映射文件
+
+~~~xml
+<!-- 引入映射配置文件 -->
+<mappers>
+    <mapper resource="priv/yangkuncheng/repository/AccountRepository.xml"></mapper>
+</mappers>
+~~~
+
+### 3.调用mybatis接口执行添加操作
+
+~~~java
+@org.junit.Test
+    public void test1() throws IOException {
+    InputStream inputStream = Test.class.getClassLoader().getResourceAsStream("config.xml");
+    SqlSessionFactoryBuilder sqlSessionFactoryBuilder = new SqlSessionFactoryBuilder();
+    SqlSessionFactory sqlSessionFactory = sqlSessionFactoryBuilder.build(inputStream);
+    SqlSession sqlSession = sqlSessionFactory.openSession();
+    
+/************        以下为测试代码            ***********/
+    
+    //获取实现接口的代理对象
+    AccountRepository accountRepository = sqlSession.getMapper(AccountRepository.class);
+
+    //添加对象
+    Account account = new Account(2, "杨大", "1234", 23);
+    accountRepository.save(account);
+
+
+    //修改对象
+    Account account3 = accountRepository.findById(10);
+    account3.setUsername("猴哥");
+    account3.setPassword("666");
+    account3.setAge(25);
+    account3.setId(9);
+
+
+    //删除对象
+    int result1 = accountRepository.deleteById(11);
+    int result2 = accountRepository.update(account3);
+
+
+    //更新事务
+    System.out.println(result2);
+    sqlSession.commit();               //提交事务
+
+
+    //查询对象
+    List<Account> list = accountRepository.findAll();
+    for (Account account1 : list) {
+        System.out.println("account1= " + account1);
+    }
+
+    System.out.println("-----log---------");
+
+    //通过id查询
+    Account account2 = accountRepository.findById(3);
+    System.out.println(account2);
+
+    //关闭
+    inputStream.close();
+    sqlSession.close();
+}
+~~~
+
+# 三、Mapper.xml详解
+
+- statement标签: select , update , delete , insert 分别对应查询、修改、删除、添加操作
+- parameterType: 参数数据类型 
+
+## 1、基本数据类型，通过id查询Account
+
+~~~xml
+<select id="findById" parameterType="long" resultType="priv.yangkuncheng.entity.Account">
+    select * from t_account where id = #{id}
+</select>
+~~~
+
+## 2、Sting类型，通过name查询Account
+
+~~~xml
+<select id="findByName" parameterType="long" resultType="priv.yangkuncheng.entity.Account">
+    select * from t_account where username = #{uername}
+</select>
+~~~
+
+## 3、包装类、通过id查询Account
+
+~~~xml
+<select id="findById2" parameterType="long" resultType="priv.yangkuncheng.entity.Account">
+    select * from t_account where id = #{id}
+</select>
+~~~
+
+## 4、多个参数 通过name和age查询Account
+
+~~~xml
+<select id="findByNameAndAge" resultType="priv.yangkuncheng.entity.Account">
+    select * from t_account where username = #{param1} and age = #{param2}
+</select>
+~~~
+
+## 5、Java Bean
+
+~~~xml
+<update id="update" parameterType="priv.yangkuncheng.entity.Account">
+    update t_account set username = #{username},password = #{password},age = #{age} where id = #{id}
+</update>
+~~~
+
+## 6、resultType 结果类型
+
+### 	1、基本数据类型 统计Account总数
+
+~~~xml
+<select id="count" resultType="java.lang.Integer">
+    select count(id) from t_account
+</select>
+~~~
+
+### 	2、包装类，统计account总数
+
+~~~java
+<select id="count2" resultType="java.lang.Integer">
+    select count(password) from t_account
+</select>
+~~~
+
+### 	3、String类型 通过id查询Account的name
+
+~~~xml
+<select id="findNameById" resultType="java.lang.String">
+    select username from t_account where id = #{id}
+</select>
+~~~
+
+## 7.级联查询
+
+- 一对多
+
+- Student
+
+~~~java
+import lombok.Data;
+
+@Data
+public class Student {
+    private long id;
+    private String name;
+    private Classes classes;
+}
+~~~
+
+- Classes
+
+~~~java
+import lombok.Data;
+
+import java.util.List;
+@Data
+public class Classes {
+    private long id=0;
+    private String name=null;
+    private List<Student>students=null;
+}
+~~~
+
+- StudentRepository接口
+
+~~~java
+public interface StudenRepository {
+    public Student findById(long id);
+}
+~~~
+
+- Mapper.xml文件
+
+~~~xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="priv.yangkuncheng.repository.StudenRepository">
+    
+    <resultMap id="studentMap" type="priv.yangkuncheng.entity.Student">
+        <id column="id" property="id"></id>
+        <result column="name" property="name"></result>
+        <association property="classes" javaType="priv.yangkuncheng.entity.Classes">
+            <id column="cid" property="id"></id>
+            <result column="cname" property="name"></result>
+        </association>
+    </resultMap>
+
+    <select id="findById" parameterType="long" resultMap="studentMap">
+        < ! -- sql 语句 -->
+        select s.id , s.name , c.id as cid, c.name as cname from student s,classes c where s.id =  #{id} and s.cid = c.id;
+    </select>
+
+</mapper>
+~~~
+
+- 实现测试
+
+~~~java
+public class Test {
+    public static void main(String[] args) {
+        InputStream inputStream = Test.class.getClassLoader().getResourceAsStream("config.xml");
+     
+        SqlSessionFactoryBuilder sqlSessionFactoryBuilder = new SqlSessionFactoryBuilder();
+
+        SqlSessionFactory   sqlSessionFactory = sqlSessionFactoryBuilder.build(inputStream);
+
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+
+        StudenRepository studenRepository = sqlSession.getMapper(StudenRepository.class);
+        System.out.println(studenRepository.findById(1L));
+        sqlSession.close();
+
+        }
+}
+~~~
+
+两张表
+
+- classes ![image-20200701183845344](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200701183845344.png)
+
+- student![image-20200701183916198](C:\Users\15371\AppData\Roaming\Typora\typora-user-images\image-20200701183916198.png)
+
+
+
+# 四、逆向工程
+
+## 1.逆向工程概念
+
+MyBatis框架需要:实现类、自定义Mapper接口、Mapper.xml
+
+传统的开发中上述的三个组件需要开发者手动创建，逆向工程可以帮助开发者来自动创建三个组件，减轻开发者的工作量，提高工作的效率
+
+
+
+## 2.如何使用？
+
+Mybatis Generator 简称 MBG，是一个专门为MyBatis框架开发者定制的代码生成器，可自动生辰MyBatis框架所需的实体类、Mapper接口、Mapper.xml，支持基本的CRUD操作，但是一些相对复杂的SQL需要开发者自己来完成
+
+- 新建Maven工程 pom.xml引入相关依赖
+
+  ~~~xml
+          <dependency>
+              <groupId>org.mybatis</groupId>
+              <artifactId>mybatis</artifactId>
+              <version>3.5.5</version>
+          </dependency>
+  
+          <dependency>
+              <groupId>org.mybatis.generator</groupId>
+              <artifactId>mybatis-generator-core</artifactId>
+              <version>1.4.0</version>
+          </dependency>
+  
+          <dependency>
+              <groupId>mysql</groupId>
+              <artifactId>mysql-connector-java</artifactId>
+              <version>8.0.20</version>
+          </dependency>
+  ~~~
+
+- 创建MBG配置文件 generatorConfig.xml
+
+  - jdbcConnection 配置数据库连接信息
+  - javaModeIGenerator配置javaBean的生成策略
+  - sqlMapGenerator配置SQL映射文件生成策略
+  - javaClientGenerator配置Mapper接口的生成策略
+  - table配置目标数据表 （tableName: 表名，domainObjectName: JavaBean类名）
+
+  ~~~xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE generatorConfiguration
+          PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+          "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+  <generatorConfiguration>
+      <context id="testTables" targetRuntime="MyBatis3">
+          <jdbcConnection driverClass="com.mysql.cj.jdbc.Driver"
+                          connectionURL="jdbc:mysql://localhost:3306/book?useUnicode=true&amp;characterEncoding=UTF-8"
+                          userId="root"
+                          password="123"
+          ></jdbcConnection>
+          
+          <javaModelGenerator targetPackage="priv.yangkuncheng.entity" targetProject="./src/main/java"></javaModelGenerator>
+          <sqlMapGenerator targetPackage="priv.yangkuncheng.repository" targetProject="./src/main/java"></sqlMapGenerator>
+          <javaClientGenerator type="XMLMAPPER" targetPackage="priv.yangkuncheng.repository" targetProject="./src/main/java"></javaClientGenerator>
+          <table tableName="t_user" domainObjectName="User"></table>
+      </context>
+  </generatorConfiguration>
+  ~~~
+
+## 3.编写代码
+
+- 创建Generator执行类
+
+# 五、MyBatis延时加载
+
+- 什么是延时加载？
+
+  ~~~markdown
+  延时加载也叫懒加载、惰性加载，使用延时加载可以提高程序的运行效率，针对于数据持久层的操作，在某些特定的情况下去访问特定的数据库，在其他情况下可以不访问某些表，从一定程度上减少了Java应用与数据库的交互次数
+  列如:
+  	查询学生和班级时，学生和班级是两张不同的表，如果当前需求只需要获取学生的信息，那么查询学生单表即可，如果需要通过学生获取对应的班级信息，则必须查询两张表。
+  
+  不同的业务需求，需要查询不同的表，根据具体的业务需求来动态减少数据表查询的工作就是延迟加载。
+  ~~~
+
+- 开启延时加载
+
+  ~~~xml
+  <settings>
+  <!-- 打印sql -->
+  <setting name="logImpl" value="STDOUT_LOGGING"/>
+  
+  <!-- 开启延时加载 -->
+  <setting name="lazyLoadingEnabled" value="true"/>
+  </settings>
+  ~~~
+
+# 六、MyBatis缓存
+
+## 1.什么是MyBatis缓存？
+
+- 使用缓存可以减少java应用与数据库的交互次数，从而提升程序的运行效率 比如查询出id=1的对象，第一次查询出之后会自动将该对象保存到缓存中，当下一次查询时，直接从缓存中取出对象即可，无需再次访问数据库
+
+## 2.缓存分类及使用
+
+### 1.一级缓存：SqlSession级别，默认开启，并且不能关闭
+
+操作数据库时需要创建SqlSession对象，在对象中有一个HashMap用于存储缓存数据，不同的SqlSession之间缓存数据区域是互不影响的
+
+一级缓存的作用域是Sqlsession范围的，在同一个SqlSession中执行两次相同的SQL语句，第一次执行完毕会将结果保存到缓存中，第二次查询时直接从缓存中获取
+
+需要注意的是，如果SqlSession执行了DML操作(插入,修改,删除)，MyBatis必须将缓存清空以保证数据的准确性
+
+### 2.二级缓存: Mapper级别，默认关闭 可以开启
+
+使用二级缓存时，多个SqlSession使用同一个Mapper的SQL语句操作数据库，得到的数据会存在二级缓存区，同样是使用HashMap进行数据存储，相比较于一级缓存，二级缓存的范围更大，多个SqlSession可以共用二级缓存，二级缓存是跨SqlSession的
+
+
+
+二级缓存是多个SqlSession共享的，其作用域是Mapper的同一个namespace，不同的SqlSession两次执行相同的namespace下的SQL语句，参数也相等，第一次执行成功之后会将数据保存到二级缓存中，第二次可以直接从二级缓存中取出数据
+
+- 二级缓存
+
+- 1、MyBatis自带的二级缓存
+
+  - config.xml只配置开启二级缓存
+
+    ~~~xml
+     <settings>
+    	<!-- 开启二级缓存 -->
+        <setting name="cacheEnabled" value="true"/>
+     </settings>
+    ~~~
+
+  - Mapper.xml中配置二级缓存
+
+    ~~~xml
+    <cache></cache>
+    ~~~
+
+  - 实体类实现序列化接口
+
+    ~~~java
+    class XXXX implements Serializable{
+        
+    }
+    ~~~
+
+- 2、ehcache二级缓存
+
+  - pom.xml添加依赖
+
+    ~~~xml
+    <dependency>
+        <groupId>org.mybatis</groupId>
+        <artifactId>mybatis-ehcache</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    
+    <dependency>
+        <groupId>net.sf.ehcache</groupId>
+        <artifactId>ehcache-core</artifactId>
+        <version>2.6.11</version>
+    </dependency>
+    ~~~
+
+  - ehcache.xml
+
+    ~~~xml
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:noNamespaceSchemaLocation="../config/ehcache.xsd">
+        <!-- 
+        java.io.tmpdir - Default temp file path 默认的 temp 文件目录 
+        diskSpoolBufferSizeMB：这个参数设置DiskStore（磁盘缓存）的缓存区大小。默认是30MB。每个Cache都应该有自己的一个缓冲区. 
+        -->
+        <diskStore path="E:\20170819\ehcache"/>
+        <defaultCache
+                      <!-- maxElementsInMemory:内存中最大缓存对象数. -->
+        maxElementsInMemory="10000"
+    
+        <!--    eternal：Element是否永久有效，一但设置了，timeout将不起作用. -->
+        eternal="false"
+    
+        <!-- timeToIdleSeconds：设置Element在失效前的允许闲置时间。仅当element不是永久有效时使用，可选属性，默认值是0， 也就是可闲置时间无穷大-->
+        timeToIdleSeconds="120"
+    
+        <!--    timeToLiveSeconds：设置Element在失效前允许存活时间。最大时间介于创建时间和失效时间之间。仅当element不是永久有效时使用，默认是0.也就是element存活时间无穷大.  -->
+        timeToLiveSeconds="120"
+    
+        <!--      overflowToDisk：配置此属性，当内存中Element数量达到maxElementsInMemory时，Ehcache将会Element写到磁盘中 -->
+        overflowToDisk="true"
+    
+        <!--    maxElementsOnDisk：磁盘中最大缓存对象数，若是0表示无穷大. -->
+        maxElementsOnDisk="10000000"
+    
+        <!--    diskPersistent：是否缓存虚拟机重启期数据。-->
+        diskPersistent="false"
+    
+        <!--    diskExpiryThreadIntervalSeconds：磁盘失效线程运行时间间隔，默认是120秒。-->
+        diskExpiryThreadIntervalSeconds="120"
+    
+        memoryStoreEvictionPolicy="LRU" />
+    </ehcache>
+    ~~~
+
+  - config.xml只配置开启二级缓存
+
+    ~~~xml
+     <settings>
+    	<!-- 开启二级缓存 -->
+        <setting name="cacheEnabled" value="true"/>
+     </settings>
+    ~~~
+
+  - Mapper.xml配置
+
+    ~~~xml
+    <cache type="org.mybatis.caches.ehcache.EhcacheCache">
+        <property name="timeToIdleSeconds" value="3600"/>
+        <!-- 缓存自创建时间起至失效的时间间隔-->
+        <property name="timeToLiveSeconds" value="3600"/>
+        <!-- 缓存回收策略，LRU表示移除近期使用的最少对象     -->
+        <property name="memoryStoreEvictionPolicy" value="LRU"/>
+    </cache>
+    ~~~
+

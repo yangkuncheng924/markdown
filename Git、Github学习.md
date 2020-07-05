@@ -137,3 +137,31 @@
 
 
 
+# 四、Git分支
+
+## 1.git的分支是什么
+
+~~~markdown
+顾名思义，分支就是从主线上分离出来进行另外的操作，而又不影响主线，主线又可以继续干它的事，是不是有点像线程，最后分支做完事后合并到主线上而分支的任务完成可以删掉了。这样是不是很方便，主线继续做它的事，分支用来解决临时需求，二者互不相干
+~~~
+
+## 2.git分支相关命令
+
+~~~markdown
+	$ git branch				查看当前仓库有几个分支
+	
+	$ git branch -r				查看所有分支 远程和本地
+	
+	$ git branch master1		创建一个分支名字为master1 可自定义更改名
+	
+	$ git checkout -b mastetr1  创建并切换到分支
+	
+	$ git checkout master1		切换分支到master1 
+	
+	$ git branch -d master1		删除分支master1
+	
+	$ git merge dev				合并分支
+~~~
+
+
+

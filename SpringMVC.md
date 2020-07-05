@@ -457,5 +457,223 @@ public class HelloServlet extends HttpServlet {
   }
   ~~~
 
+
+# 四、RestFul风格
+
+- Restful就跟一个资源定位及资源操作的风格，不是标准也不是协议，只是一种风格，基于这个风格设计的软件可以简洁，更有层次，更易于实现缓存等机制
+
+
+
+- 功能
+
+  - 资源: 互联网所有的事务都可以被抽象为资源
+  - 自愿操作:使用POST、DELETE、PUT、GET,使用不同方法对资源进行操作。
+  - 分别对应 添加、删除、修改、查询
+
   
 
+# 五、JSON
+
+- pom.xml
+
+  ~~~xml
+  <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.11.0</version>
+  </dependency>
+  
+  <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.12</version>
+  </dependency>
+  ~~~
+
+- web.xml
+
+  ~~~xml
+  <servlet>
+      <servlet-name>springmvc</servlet-name>
+      <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+      <init-param>
+          <param-name>contextConfigLocation</param-name>
+          <param-value>classpath:springmvc-servlet.xml</param-value>
+      </init-param>
+      <load-on-startup>1</load-on-startup>
+  </servlet>
+  <servlet-mapping>
+      <servlet-name>springmvc</servlet-name>
+      <url-pattern>/</url-pattern>
+  </servlet-mapping>
+  ~~~
+
+- springmvc-servlet.xml
+
+  ~~~xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <beans xmlns="http://www.springframework.org/schema/beans"
+         xmlns:context="http://www.springframework.org/schema/context"
+         xmlns:p="http://www.springframework.org/schema/p"
+         xmlns:mvc="http://www.springframework.org/schema/mvc"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd">
+      <context:component-scan base-package="priv.yangkuncheng.controller"/>
+      <mvc:default-servlet-handler/>
+      <mvc:annotation-driven/>
+  
+      <!--    视图解析器-->
+      <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver" id="internalResourceViewResolver">
+          <!-- 前缀-->
+          <property name="prefix" value="/WEB-INF/jsp/"/>
+          <!-- 后缀-->
+          <property name="suffix" value=".jsp"/>
+      </bean>
+  </beans>
+  ~~~
+
+- java代码
+
+  ~~~java
+  package priv.yangkuncheng.pojo;
+  
+  public class User {
+      private String name;
+      private int age;
+      private String sex;
+  	/*
+  		set get 构造器
+  	*/
+  }
+  ~~~
+
+- java实现代码
+
+  ~~~java
+  import com.fasterxml.jackson.core.JsonProcessingException;
+  import com.fasterxml.jackson.databind.ObjectMapper;
+  import org.springframework.web.bind.annotation.RequestMapping;
+  import org.springframework.web.bind.annotation.ResponseBody;
+  import org.springframework.web.bind.annotation.RestController;
+  import priv.yangkuncheng.pojo.User;
+  import priv.yangkuncheng.utils.JsonUtils;
+  import java.text.SimpleDateFormat;
+  import java.util.ArrayList;
+  import java.util.Date;
+  import java.util.List;
+  
+  //@Controller
+  @RestController
+  public class UserController {
+      @RequestMapping("tiyi")
+      @ResponseBody   //它就不会走视图解析器
+      public String json1() throws JsonProcessingException {
+          ObjectMapper mapper = new ObjectMapper();
+          User user = new User("yangyi",3,"男");
+          String str = mapper.writeValueAsString(user);
+          return user.toString();
+      }
+  
+      @RequestMapping("js")
+      public String json2() {
+          ObjectMapper mapper = new ObjectMapper();
+          List<User> list = new ArrayList<User>();
+  
+          User user = new User("yangyi",3,"男");
+          User user1 = new User("yanger",4,"男");
+          User user2 = new User("yangsan",5,"男");
+          User user3 = new User("yangsi",6,"男");
+  
+          list.add(user);
+          list.add(user1);
+          list.add(user2);
+          list.add(user3);
+  
+          String str = null;
+          try {
+              str = mapper.writeValueAsString(list);
+          } catch (JsonProcessingException e) {
+              e.printStackTrace();
+          }
+  
+          return str;
+      }
+      @RequestMapping("js1")
+      public String json3() throws JsonProcessingException {
+          ObjectMapper mapper = new ObjectMapper();
+          Date date = new Date();
+          
+          //自定义日期的格式 转换时间
+          SimpleDateFormat std = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+  
+          return mapper.writeValueAsString( std.format(date));
+      }
+      
+      @RequestMapping("js2")
+      public String json4() {
+          Date date = new Date();
+  //        return JsonUtils.getJson(date,"yyyy-MM-dd HH:mm:ss");
+          return JsonUtils.getJson(date);
+      }
+  }
+  
+  ~~~
+
+- 封装的类实现
+
+  ~~~java
+  import com.fasterxml.jackson.core.JsonProcessingException;
+  import com.fasterxml.jackson.databind.ObjectMapper;
+  import com.fasterxml.jackson.databind.SerializationFeature;
+  import java.text.SimpleDateFormat;
+  
+  
+  public class JsonUtils {
+      public static String getJson(Object object){
+          return getJson(object,"yyyy-MM--dd HH:mm:ss");
+      }
+  
+      public static String getJson(Object object,String dateFormat){
+          ObjectMapper mapper = new ObjectMapper();
+  
+          mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,false);
+  
+          SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
+  
+          mapper.setDateFormat(sdf);
+  
+          try {
+              return mapper.writeValueAsString(object);
+          } catch (JsonProcessingException e) {
+              e.printStackTrace();
+          }
+          return null;
+      }
+  }
+  
+  ~~~
+
+阿里巴巴提供的json开源
+
+~~~xml
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>fastjson</artifactId>
+    <version>1.2.70</version>
+</dependency>
+~~~
+
+
+
+# 六、SSM整合
+
+## 1.搭建pom.xml环境
+
+- ```markdown
+  依赖：junit 数据库驱动，连接池，servlet，jsp，mybatis，mybatis-spring，spring
+  ```
